@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>SVG2AM Studio</title>
+<style>
+:root{color-scheme:dark;--bg:#090d18;--panel:#121a2b;--line:#27334c;--cyan:#48d9e8;--purple:#9275ff;--muted:#9eabc4}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 0,#20264c 0,#090d18 45%);color:#f4f7ff;font:15px system-ui,Arial}
+header{padding:22px 18px 14px}h1{font-size:24px;margin:0;font-weight:850;letter-spacing:.3px}h1 span{color:var(--cyan)}.sub{color:var(--muted);font-size:12px;margin-top:5px}
+main{padding:0 14px 30px;max-width:760px;margin:auto}.card{background:linear-gradient(145deg,#172239,#101727);border:1px solid var(--line);border-radius:18px;padding:15px;margin:12px 0;box-shadow:0 12px 30px #0003}
+.row{display:flex;gap:9px;flex-wrap:wrap}.btn{border:0;border-radius:12px;padding:12px 15px;background:#253451;color:white;font-weight:700;font-size:13px;flex:1;min-width:120px}.primary{background:linear-gradient(110deg,#16a6bb,#6558d9)}.btn:disabled{opacity:.4}
+#drop{border:1px dashed #536789;border-radius:14px;padding:24px 12px;text-align:center;color:var(--muted);background:#0b1220}#drop b{display:block;color:white;margin-bottom:5px}
+input[type=file]{display:none}.preview{background:#0a1020;border:1px solid #26334b;border-radius:14px;min-height:180px;display:grid;place-items:center;overflow:hidden;padding:12px}
+.preview svg{max-width:100%;max-height:280px}.empty{color:#71809c;font-size:13px;text-align:center}
+h2{font-size:15px;margin:0 0 12px}.meta{font-size:12px;color:var(--muted);margin-top:9px}.layers{display:grid;gap:7px;max-height:220px;overflow:auto}.layer{background:#0b1323;border:1px solid #26334b;padding:9px 11px;border-radius:10px;display:flex;justify-content:space-between;font-size:12px}
+pre{white-space:pre-wrap;word-break:break-word;background:#080e19;color:#bceef2;padding:12px;border-radius:12px;max-height:180px;overflow:auto;font-size:11px}
+.note{font-size:11px;color:#aebbd2;line-height:1.55}.tag{display:inline-block;color:#67e5ee;background:#12303b;border-radius:30px;padding:4px 8px;font-size:10px;font-weight:800;margin-bottom:10px}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#26334d;padding:10px 15px;border-radius:12px;display:none;z-index:5;font-size:12px}
+</style></head><body>
+<header><div class="tag">ANDROID TOOL • BETA</div><h1>SVG2AM <span>STUDIO</span></h1><div class="sub">Bongkar logo • Pisahkan layer • Ekspor XML</div></header>
+<main>
+<section class="card"><h2>1. Masukkan file SVG</h2><label id="drop" for="file"><b>＋ Pilih file SVG</b>Ketuk untuk mengambil logo dari penyimpanan HP</label><input id="file" type="file" accept=".svg,image/svg+xml"><div class="meta" id="filename">Belum ada file dipilih</div></section>
+<section class="card"><h2>2. Preview logo</h2><div class="preview" id="preview"><div class="empty">Preview logo akan muncul di sini</div></div><div class="row" style="margin-top:12px"><button class="btn" id="analyze" disabled>Bongkar jadi layer</button><button class="btn" id="reset">Reset</button></div></section>
+<section class="card"><h2>3. Struktur layer</h2><div class="layers" id="layers"><div class="empty">Belum ada layer</div></div><div class="meta" id="count">0 objek terdeteksi</div></section>
+<section class="card"><h2>4. Ekspor</h2><div class="row"><button class="btn primary" id="saveSvg" disabled>Ekspor SVG</button><button class="btn primary" id="saveXml" disabled>Ekspor XML</button></div><p class="note">XML yang dibuat adalah XML terstruktur berisi objek SVG dan atribut layer. Ini bukan file proyek Alight Motion resmi yang sudah terverifikasi; kompatibilitas impor langsung ke Alight Motion tidak dijamin. Untuk hasil edit, setiap elemen SVG dipertahankan sebagai objek terpisah sejauh memungkinkan.</p></section>
+<section class="card"><h2>XML hasil konversi</h2><pre id="output">Belum ada hasil. Pilih file SVG lalu tekan “Bongkar jadi layer”.</pre></section>
+</main><div class="toast" id="toast"></div>
+<script>
+let rawSvg='',doc=null,objects=[];
+const $=id=>document.getElementById(id);
+function toast(t){let e=$('toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',2200)}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]))}
+function download(name,data,type){let blob=new Blob([data],{type}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
+$('file').addEventListener('change',async e=>{let f=e.target.files[0];if(!f)return;if(!f.name.toLowerCase().endsWith('.svg')&&f.type!=='image/svg+xml'){toast('Pilih file SVG saja');return}
+rawSvg=await f.text();let parser=new DOMParser();doc=parser.parseFromString(rawSvg,'image/svg+xml');if(doc.querySelector('parsererror')||doc.documentElement.localName!=='svg'){toast('File SVG tidak valid');doc=null;return}
+$('filename').textContent=f.name;$('preview').innerHTML=rawSvg;$('analyze').disabled=false;$('saveSvg').disabled=false; $('saveXml').disabled=true;$('layers').innerHTML='<div class="empty">Tekan Bongkar jadi layer</div>';$('output').textContent='SVG berhasil dibaca.';toast('SVG berhasil dimuat')});
+const allowed=['path','rect','circle','ellipse','line','polyline','polygon','text','image','g','use'];
+$('analyze').onclick=()=>{if(!doc)return;let root=doc.documentElement;objects=[...root.querySelectorAll('*')].filter(el=>allowed.includes(el.localName.toLowerCase()) && !el.closest('defs,clipPath,mask,metadata,linearGradient,radialGradient,pattern,marker,symbol'));objects=objects.filter(el=>!objects.some(other=>other!==el&&other.contains(el)&&other.localName.toLowerCase()==='g'));if(!objects.length)objects=[...root.children].filter(x=>!['defs','title','desc','metadata'].includes(x.localName));
+$('layers').innerHTML='';objects.forEach((el,i)=>{let n=el.getAttribute('id')||el.getAttribute('aria-label')||el.localName+'_'+(i+1);let d=document.createElement('div');d.className='layer';d.innerHTML='<span>▧ '+esc(n)+'</span><span>'+esc(el.localName)+'</span>';$('layers').appendChild(d)});
+$('count').textContent=objects.length+' objek/layer terdeteksi';let xml='<?xml version="1.0" encoding="UTF-8"?>\n<svg2am version="1.0">\n  <document width="'+esc(root.getAttribute('width')||'')+'" height="'+esc(root.getAttribute('height')||'')+'" viewBox="'+esc(root.getAttribute('viewBox')||'')+'"/>\n  <layers>\n';
+objects.forEach((el,i)=>{let serializer=new XMLSerializer(),attrs=[...el.attributes].map(a=>a.name+'="'+esc(a.value)+'"').join(' ');xml+='    <layer index="'+i+'" name="'+esc(el.getAttribute('id')||el.localName+'_'+(i+1))+'" type="'+esc(el.localName)+'">\n      <element '+attrs+'>'+esc(el.textContent.trim())+'</element>\n    </layer>\n'});
+xml+='  </layers>\n</svg2am>'; $('output').textContent=xml;$('saveXml').disabled=false;toast('Selesai: '+objects.length+' layer')};
+$('saveSvg').onclick=()=>download('logo-hasil.svg',rawSvg,'image/svg+xml');
+$('saveXml').onclick=()=>download('logo-layers.xml',$('output').textContent,'application/xml');
+$('reset').onclick=()=>{rawSvg='';doc=null;objects=[];$('file').value='';$('filename').textContent='Belum ada file dipilih';$('preview').innerHTML='<div class="empty">Preview logo akan muncul di sini</div>';$('layers').innerHTML='<div class="empty">Belum ada layer</div>';$('count').textContent='0 objek terdeteksi';$('output').textContent='Belum ada hasil.';$('analyze').disabled=$('saveSvg').disabled=$('saveXml').disabled=true;toast('Direset')};
+</script></body></html>
